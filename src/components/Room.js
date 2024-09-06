@@ -9,11 +9,16 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import ClientSearchCard from './ClientSearchCard';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, setUser } from '../redux/userSlice';
-import { useNavigate } from 'react-router-dom';
+import { logout, setOnlineUser, setSocketConnection, setUser } from '../redux/userSlice';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { RxCross1 } from "react-icons/rx";
+import { io } from 'socket.io-client';
 
 const Room = () => {
+    const location = useLocation();
+    const params = useParams();
     const user = useSelector(state => state?.user);
+    const socketConnection = useSelector(state => state?.user?.socketConnection);
     const [loading, setLoading] = useState(false);
     const [searchUser, setSearchUser] = useState([]);
     const [search, setSearch] = useState('');
@@ -30,6 +35,25 @@ const Room = () => {
             socketId: 2
         }
     ]);
+
+    // Socket connection
+    useEffect(() => {
+    const socketConnection = io(process.env.REACT_APP_API_URL, {
+        auth: {
+        token: localStorage.getItem('token')
+        }
+    });
+
+    socketConnection.on('onlineUser', (data) => {
+        dispatch(setOnlineUser(data));
+    });
+
+    dispatch(setSocketConnection(socketConnection));
+    // dispatch(setSocketConnection(true));
+    return () => {
+        socketConnection.disconnect();
+    };
+    }, [location?.pathname]);
 
     const handleSearchUser = async () => {
         const URL = `${process.env.REACT_APP_API_URL}/api/search-user`;
@@ -82,11 +106,28 @@ const Room = () => {
       );
     };
 
+    const handleInviteUsers = async() => {
+        // setTimeout(() => {
+            if(socketConnection) {
+                for(let selectedUserId of selectedUserIds) {
+                    socketConnection.emit('new-message', {
+                        sender : user?._id,
+                        receiver : selectedUserId,
+                        text : params?.roomId,
+                        msgByUserId : user?._id
+                    });
+                }
+                setSearch('');
+            }
+        // } ,  100);
+    };
+
     useEffect(() => {
         if(search?.length > 0) {
             handleSearchUser();
         } else {
             setSearchUser([]);
+            setSelectedUserIds([]);
         }
     } , [search]);
 
@@ -99,7 +140,7 @@ const Room = () => {
             <div className='h-screen'>
                 <SideBar name={'Room'} />
             </div>
-            <div className='flex flex-col bg-white p-2 relative'> {/* Added relative position here */}
+            <div className='flex flex-col bg-white p-2 relative w-[90%] lg:w-[25%]'> {/* Added relative position here */}
                 <div className='flex flex-col'>
                     <div className='border-b border-gray-300'>
                         <img 
@@ -117,12 +158,26 @@ const Room = () => {
                             onChange={(e) => setSearch(e.target.value)}
                             value={search}
                         />   
-                        <div className='h-12 w-8 flex justify-center items-center cursor-pointer'>
-                            <IoIosSearch
-                                size={25}
-                                className='text-gray-500'
-                            />
-                        </div>
+                        {search.length === 0 ? (
+                            <div className='h-12 w-8 flex justify-center items-center cursor-pointer'>
+                                <IoIosSearch
+                                    size={25}
+                                    className='text-gray-500'
+                                />
+                            </div>
+                        ) : (
+                            <div 
+                                onClick = {() => {
+                                    setSearch('')
+                                }} 
+                                className='h-12 w-8 flex justify-center items-center cursor-pointer'
+                            >
+                                <RxCross1
+                                    size={20}
+                                    className='text-gray-500'
+                                />
+                            </div>
+                        )}
                     </div>
                     {/* Display searched user */}
                     {search.length > 0 && (
@@ -160,7 +215,7 @@ const Room = () => {
                                     toggleSelect={toggleSelect}
                                     />
                                 ))}
-                                <button className='border px-4 py-1 w-full rounded bg-secondary text-white font-bold mt-1 hover:bg-third'>
+                                <button onClick={handleInviteUsers} className='border px-4 py-1 w-full rounded bg-secondary text-white font-bold mt-1 hover:bg-third'>
                                     Invite
                                 </button>
                                 </div>
@@ -190,7 +245,7 @@ const Room = () => {
                 </div>
             </div>
 
-            <div className=''>
+            <div className='w-full h-full'>
                 <Editor />
             </div>
         </div>

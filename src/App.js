@@ -7,7 +7,7 @@ function App() {
   return (
     <>
       <Toaster />
-      <main>
+      <main className='h-full'>
         <Outlet />
       </main>
     </>

@@ -26,6 +26,14 @@ const SideBar = ({name}) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    useEffect(() => {
+        if(user?.name === 'TokenExpiredError') {
+            dispatch(logout());
+            localStorage.clear();
+            navigate('/email');
+        }
+    },[user]);
+
     const handleLogOut = () => {
         dispatch(logout());
         navigate('/email');

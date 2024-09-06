@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-// Remove the import for the dark theme
-// import { oneDark } from '@codemirror/theme-one-dark';
+import './editorStyles.css'; // Import the CSS file
 
 const Editor = () => {
   useEffect(() => {
@@ -13,7 +12,7 @@ const Editor = () => {
 
     const editor = new EditorView({
       doc: 'This is the editor',
-      extensions: [basicSetup, javascript()], // Remove the dark theme extension
+      extensions: [basicSetup, javascript()],
       parent: parentElement
     });
 
@@ -24,7 +23,7 @@ const Editor = () => {
   }, []);
 
   return (
-    <div id="realTimeEditor" className='w-[100%] h-200'></div>
+    <div id="realTimeEditor" className='w-full h-full'></div>
   );
 };
 
