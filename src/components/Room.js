@@ -20,7 +20,6 @@ import EditorComponent from './Editor';
 const Room = () => {
     const location = useLocation();
     const { name, profile_pic, _id } = location.state || {};
-    console.log('name : ' , name , 'profile_pic : ' , profile_pic , '_id : ' , _id);
     const params = useParams();
     const socketConnection = useSelector(state => state?.user?.socketConnection);
     const [loading, setLoading] = useState(false);
@@ -32,6 +31,7 @@ const Room = () => {
     const [client, setClient] = useState([]);
     const [language, setLanguage] = useState('javascript');
     const [code, setCode] = useState('');
+    const [showSideBar, setShowSideBar] = useState(false);
 
     // Now i will use useRef to avoid re-rendering of the component
     const socketRef = useRef(null);
@@ -58,27 +58,19 @@ const Room = () => {
     // Socket connection
     useEffect(() => {
         let init = async () => {
-            console.log('connection is set');
             if(!socketConnection) {
-                console.log('scoketconnection is not set', socketConnection);
                 socketRef.current = await initSocket(dispatch);
             }
-            console.log('just above the setTimeout');
             setTimeout(() => {
-                console.log('In first line of setTimeout');
-                console.log('socketConnection',socketConnection);
                 if(socketConnection) {
-                    console.log('socketConnection is set');
                     socketRef.current = socketConnection;
                 }
-                console.log('socketConnection inside : ' , socketRef.current , 'params?.roomId : ' , params?.roomId , 'name : ' , name);
                 if(socketRef.current && params?.roomId && name) {
                     socketRef.current.emit(ACTIONS.JOIN, {
                         roomId: params?.roomId,
                         userId: _id
                     });
                     socketRef.current.on(ACTIONS.JOINED, (data) => {
-                        console.log('data : ' , data);
                         const { populatedClients, user, socketId } = data;
                         if (user?._id !== _id) {
                             toast.success(`${user?.name} joined the room`);
@@ -87,65 +79,17 @@ const Room = () => {
                     });
 
                     socketRef.current?.on('language-update', (newLanguage) => {
-                        console.log('newLanguage : ' , newLanguage);
                         setLanguage(newLanguage);
                     });
 
                     socketRef.current?.on(ACTIONS.SYNC_CODE , (newCode) => {
-                        console.log('newCode manish : ' , newCode);
                         setCode(newCode);
                     });
                 }
             }, 1000);
-            // console.log("Initializing socket connection");
-            // if(!socketConnection) {
-            //     socketRef.current = await initSocket(dispatch);
-    
-            //     socketRef.current.on('connect_error', (error) => handleError(navigate, error));
-            //     socketRef.current.on('connect_failed', (error) => handleError(navigate, error));
-
-            //     console.log('scoketRef.current : ' , socketRef.current);
-            //     console.log('params?.roomId : ' , params?.roomId);
-            //     console.log('name : ' , name);
-            //     console.log('socketConnection : ' , socketConnection);
-            //     if(params?.roomId &&  socketRef.current && name) {
-            //         socketRef.current.emit(ACTIONS.JOIN, {
-            //             roomId: params?.roomId,
-            //             name
-            //         });
-            //         socketRef.current.on(ACTIONS.JOINED, (data) => {
-            //             const { populatedClients, username, socketId } = data;
-            //             if (username !== name) {
-            //                 toast.success(`${username} joined the room`);
-            //             }
-            //             setClient((prev) => [...prev, { username, socketId }]);
-            //         });
-            //     }
-            // } else {
-            //     if(socketConnection && params?.roomId && name) {
-            //         socketConnection?.emit(ACTIONS.JOIN, {
-            //             roomId: params?.roomId,
-            //             name
-            //         });
-            //         socketConnection?.on(ACTIONS.JOINED, (data) => {
-            //             const { populatedClients, username, socketId } = data;
-            //             if (username !== name) {
-            //                 toast.success(`${username} joined the room`);
-            //             }
-            //             setClient((prev) => [...prev, { username, socketId }]);
-            //         });
-            //     }
-            // }
         };
         init();
-    // }, [socketConnection , params?.roomId , name]); 
 }, []);
-
-
-// useEffect(() => {
-//     console.log('socketConnection outside : ' , socketConnection , 'params?.roomId : ' , params?.roomId , 'name : ' , name);
-    
-// }, [socketConnection]);
 
 
     const handleSearchUser = async () => {
@@ -185,7 +129,6 @@ const Room = () => {
               navigate('/email');
             }
     
-            console.log(response);
         } catch (error) {
             console.log(error);
         }
@@ -203,7 +146,6 @@ const Room = () => {
         // setTimeout(() => {
             if(socketConnection) {
                 for(let selectedUserId of selectedUserIds) {
-                    console.log('sender : ' , _id , 'receiver : ' , selectedUserId , 'text : ' , params?.roomId , 'msgByUserId : ' , _id);
                     socketConnection.emit('new-message', {
                         sender : _id,
                         receiver : selectedUserId,
@@ -230,28 +172,18 @@ const Room = () => {
         fetchUserDetails();
     } , []);
 
-    const handleClickMe = () => {
-        console.log('socketRef.current : ' , socketRef.current);
-        console.log('socketConnection : ' , socketConnection);
-    }
 
     // handle code change
     const handleCodeChange = (value) => {
-        console.log('forntend code change value : ' , value);
         setCode(value);
-        console.log('socketRef.current : ' , socketRef.current);
-        console.log('code : ' , code);
         if(setSocketConnection) 
             socketRef.current = socketConnection;
-        // setTimeout(() => {
             if(socketRef.current) {
                 socketRef.current.emit(ACTIONS.CODE_CHANGE, {
                     roomId: params?.roomId,
                     code: value
                 });
-                console.log('socketConnection : ' , socketConnection);
             }
-        // }, 1000);
     };
 
     // handle language change
@@ -270,12 +202,33 @@ const Room = () => {
         }
     };
 
+    // handle copy room id
+    const handleCopyRoomID = () => {
+        navigator.clipboard.writeText(params?.roomId);
+        toast.success('Room ID copied to clipboard');
+    };
+
+    // handle leave room
+    const handleLeaveRoom = () => {
+        if(socketConnection) 
+            socketRef.current = socketConnection;
+        if(socketRef.current) {
+            socketRef.current.emit(ACTIONS.LEAVE, {
+                roomId: params?.roomId,
+                userId: _id
+            });
+        }
+        localStorage.removeItem('roomID');
+        toast.success('You left the room');
+        navigate('/');
+    }
+
     return (
-        <div className='flex h-screen'>
+        <div className='flex h-screen overflow-hidden'>
             <div className='h-screen'>
                 <SideBar name={'Room'} />
             </div>
-            <div className='flex flex-col bg-gray-50 p-2 relative w-[90%] lg:w-[25%] rounded shadow-xl'> {/* Added relative position here */}
+            <div className={`flex flex-col bg-gray-50 p-2 relative w-[90%] lg:w-[25%] rounded shadow-xl ${showSideBar ? 'hidden' : ''} `}> 
                 <div className='flex flex-col'>
                     <div className='border-b border-gray-300'>
                         <img 
@@ -377,16 +330,7 @@ const Room = () => {
                     </div>
                 </div>
                 <div className='flex flex-col gap-3 mt-auto mb-6'>
-                    <button className='border-gray-200 border px-4 bg-gray-200 font-semibold py-1 rounded hover:border-gray-400 hover:bg-gray-400 hover:font-bold'>Copy Room ID</button>
-                    <button className='border-red-400 border px-4 py-1 rounded bg-red-400  hover:border-red-500 hover:bg-red-500 text-white hover:font-bold'>Leave Room</button>
-                </div>
-            </div>
-            <div className='w-full h-full'>
-                <div className='h-[5%] bg-gray-200 flex justify-between items-center p-2'>
-                    <h3 className='text-xl font-semibold text-gray-700  p-2 '>
-                        Code Editor
-                    </h3>
-                    <select className='w-[25%] p-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    <select className='p-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-[20%]'
                         value={language}
                         onChange={handleLanguageChange}
                     >
@@ -398,6 +342,18 @@ const Room = () => {
                         <option value='html'>HTML</option>
                         <option value='css'>CSS</option>
                     </select>
+                    <button onClick={handleCopyRoomID} className='border-gray-200 border px-4 bg-gray-200 font-semibold py-1 rounded hover:border-gray-400 hover:bg-gray-400 hover:font-bold'>Copy Room ID</button>
+                    <button onClick={handleLeaveRoom} className='border-red-400 border px-4 py-1 rounded bg-red-400  hover:border-red-500 hover:bg-red-500 text-white hover:font-bold'>Leave Room</button>
+                </div>
+            </div>
+            <div className='w-full h-full'>
+                <div className='h-[5%] bg-gray-200 flex justify-between items-center p-2'>
+                    <h3 className={` ${!showSideBar ? 'hidden lg:block md:block' : 'block'} lg:text-xl font-semibold text-gray-700 p-2 md:text-lg`}>
+                        Code Editor
+                    </h3>
+                    <button onClick = {() => setShowSideBar(!showSideBar)} className='w-[23%] p-1.5 border border-gray-300 rounded-md shadow-sm bg-white sm:hidden'>
+                        Menu
+                    </button>
                 </div>
                 <EditorComponent 
                     language={language}

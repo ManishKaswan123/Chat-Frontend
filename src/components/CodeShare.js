@@ -73,7 +73,6 @@ const CodeShare = ({onClose , user}) => {
     };
 
     const handleInputEnter = (e) => {
-        console.log(e.code);
         if(e.code === 'Enter') {
             handleJoinRoom();
         }

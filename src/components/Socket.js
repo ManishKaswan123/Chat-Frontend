@@ -3,7 +3,6 @@ import { setOnlineUser, setSocketConnection } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
 
 const initSocket = async (dispatch) => {
-    console.log('initSocket');
     const socketConnection = io(process.env.REACT_APP_API_URL, {
         auth: {
         token: localStorage.getItem('token')

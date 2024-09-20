@@ -31,7 +31,6 @@ const Home = () => {
           navigate('/email');
         }
 
-        console.log(response);
     } catch (error) {
         console.log(error);
     }

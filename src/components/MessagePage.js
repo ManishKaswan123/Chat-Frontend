@@ -167,7 +167,6 @@ const MessagePage = () => {
 
   useEffect(() => {
     setTimeout(() => {
-      console.log('socketConnection in message ' , socketConnection);
       if(socketConnection) {
         socketConnection?.emit('message-page', params?.userId);
   

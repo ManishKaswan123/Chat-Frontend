@@ -47,7 +47,6 @@ const RegisterPage = () => {
         e.preventDefault();
         e.stopPropagation();
 
-        console.log('data', data);
 
         const URL = `${process.env.REACT_APP_API_URL}/api/register`;
 
