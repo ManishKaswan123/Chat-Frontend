@@ -1,17 +1,20 @@
 import axios from 'axios';
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logout, setOnlineUser, setSocketConnection, setUser } from '../redux/userSlice';
 import SideBar from '../components/SideBar';
 import logo2 from '../assets/logo2.png';
 import io from 'socket.io-client';
+import initSocket from '../components/Socket';
+import handleError from '../components/Error';
 
 const Home = () => {
   const user = useSelector((state) => state.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const socketConnection = useSelector(state => state?.user?.socketConnection);
 
   const fetchUserDetails = async() => {
     try {
@@ -38,24 +41,35 @@ const Home = () => {
     fetchUserDetails();
   } , []);
 
+    // Now i will use useRef to avoid re-rendering of the component
+    const socketRef = useRef(null);
+
   // Socket connection
   useEffect(() => {
-    const socketConnection = io(process.env.REACT_APP_API_URL, {
-      auth: {
-        token: localStorage.getItem('token')
-      }
-    });
+    // const socketConnection = io(process.env.REACT_APP_API_URL, {
+    //   auth: {
+    //     token: localStorage.getItem('token')
+    //   }
+    // });
 
-    socketConnection.on('onlineUser', (data) => {
-      dispatch(setOnlineUser(data));
-    });
+    // socketConnection.on('onlineUser', (data) => {
+    //   dispatch(setOnlineUser(data));
+    // });
 
-    dispatch(setSocketConnection(socketConnection));
-    // dispatch(setSocketConnection(true));
-    return () => {
-      socketConnection.disconnect();
+    // dispatch(setSocketConnection(socketConnection));
+    // // dispatch(setSocketConnection(true));
+    // return () => {
+    //   socketConnection.disconnect();
+    // };
+    let init = async () => {
+      socketRef.current = await initSocket(dispatch);
+
+      socketRef.current.on('connect_error', (error) => handleError(navigate , error));
+      socketRef.current.on('connect_failed', (error) => handleError(navigate , error));
     };
-  }, [location?.pathname]);
+    init();
+  // }, [location?.pathname]);
+}, []);
 
   const basePath = location.pathname === '/';
   return (

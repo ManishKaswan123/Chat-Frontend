@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import SideBar from './SideBar'
 import logo2 from '../assets/logo2.png'
 import Avatar from './Avatar';
-import Editor from './Editor';
 import { IoIosSearch } from 'react-icons/io';
 import Loading from './Loading';
 import axios from 'axios';
@@ -13,11 +12,16 @@ import { logout, setOnlineUser, setSocketConnection, setUser } from '../redux/us
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RxCross1 } from "react-icons/rx";
 import { io } from 'socket.io-client';
+import initSocket from './Socket';
+import ACTIONS from '../Action';
+import handleError from './Error';
+import EditorComponent from './Editor';
 
 const Room = () => {
     const location = useLocation();
+    const { name, profile_pic, _id } = location.state || {};
+    console.log('name : ' , name , 'profile_pic : ' , profile_pic , '_id : ' , _id);
     const params = useParams();
-    const user = useSelector(state => state?.user);
     const socketConnection = useSelector(state => state?.user?.socketConnection);
     const [loading, setLoading] = useState(false);
     const [searchUser, setSearchUser] = useState([]);
@@ -25,35 +29,124 @@ const Room = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [selectedUserIds, setSelectedUserIds] = useState([]);
-    const [client, setClient] = useState([
-        {   
-            username: 'Client 1' ,
-            socketId: 1
-        }, 
-        {
-            username: 'Client 2',
-            socketId: 2
+    const [client, setClient] = useState([]);
+    const [language, setLanguage] = useState('javascript');
+    const [code, setCode] = useState('');
+
+    // Now i will use useRef to avoid re-rendering of the component
+    const socketRef = useRef(null);
+
+    useEffect(() => {
+        if(socketConnection) 
+            socketRef.current = socketConnection;
+
+        if(socketRef.current) {
+            socketRef.current?.on(ACTIONS.SYNC_CODE , (newCode) => {
+                setCode(newCode);
+            });
+
+            socketRef.current?.on('language-update', (newLanguage) => {
+                setLanguage(newLanguage);
+            });
         }
-    ]);
+        return () => {
+            socketRef.current?.off(ACTIONS.SYNC_CODE);
+            socketRef.current?.off('language-update');
+        }
+    }, []);
 
     // Socket connection
     useEffect(() => {
-    const socketConnection = io(process.env.REACT_APP_API_URL, {
-        auth: {
-        token: localStorage.getItem('token')
-        }
-    });
+        let init = async () => {
+            console.log('connection is set');
+            if(!socketConnection) {
+                console.log('scoketconnection is not set', socketConnection);
+                socketRef.current = await initSocket(dispatch);
+            }
+            console.log('just above the setTimeout');
+            setTimeout(() => {
+                console.log('In first line of setTimeout');
+                console.log('socketConnection',socketConnection);
+                if(socketConnection) {
+                    console.log('socketConnection is set');
+                    socketRef.current = socketConnection;
+                }
+                console.log('socketConnection inside : ' , socketRef.current , 'params?.roomId : ' , params?.roomId , 'name : ' , name);
+                if(socketRef.current && params?.roomId && name) {
+                    socketRef.current.emit(ACTIONS.JOIN, {
+                        roomId: params?.roomId,
+                        userId: _id
+                    });
+                    socketRef.current.on(ACTIONS.JOINED, (data) => {
+                        console.log('data : ' , data);
+                        const { populatedClients, user, socketId } = data;
+                        if (user?._id !== _id) {
+                            toast.success(`${user?.name} joined the room`);
+                        }
+                        setClient(populatedClients);
+                    });
 
-    socketConnection.on('onlineUser', (data) => {
-        dispatch(setOnlineUser(data));
-    });
+                    socketRef.current?.on('language-update', (newLanguage) => {
+                        console.log('newLanguage : ' , newLanguage);
+                        setLanguage(newLanguage);
+                    });
 
-    dispatch(setSocketConnection(socketConnection));
-    // dispatch(setSocketConnection(true));
-    return () => {
-        socketConnection.disconnect();
-    };
-    }, [location?.pathname]);
+                    socketRef.current?.on(ACTIONS.SYNC_CODE , (newCode) => {
+                        console.log('newCode manish : ' , newCode);
+                        setCode(newCode);
+                    });
+                }
+            }, 1000);
+            // console.log("Initializing socket connection");
+            // if(!socketConnection) {
+            //     socketRef.current = await initSocket(dispatch);
+    
+            //     socketRef.current.on('connect_error', (error) => handleError(navigate, error));
+            //     socketRef.current.on('connect_failed', (error) => handleError(navigate, error));
+
+            //     console.log('scoketRef.current : ' , socketRef.current);
+            //     console.log('params?.roomId : ' , params?.roomId);
+            //     console.log('name : ' , name);
+            //     console.log('socketConnection : ' , socketConnection);
+            //     if(params?.roomId &&  socketRef.current && name) {
+            //         socketRef.current.emit(ACTIONS.JOIN, {
+            //             roomId: params?.roomId,
+            //             name
+            //         });
+            //         socketRef.current.on(ACTIONS.JOINED, (data) => {
+            //             const { populatedClients, username, socketId } = data;
+            //             if (username !== name) {
+            //                 toast.success(`${username} joined the room`);
+            //             }
+            //             setClient((prev) => [...prev, { username, socketId }]);
+            //         });
+            //     }
+            // } else {
+            //     if(socketConnection && params?.roomId && name) {
+            //         socketConnection?.emit(ACTIONS.JOIN, {
+            //             roomId: params?.roomId,
+            //             name
+            //         });
+            //         socketConnection?.on(ACTIONS.JOINED, (data) => {
+            //             const { populatedClients, username, socketId } = data;
+            //             if (username !== name) {
+            //                 toast.success(`${username} joined the room`);
+            //             }
+            //             setClient((prev) => [...prev, { username, socketId }]);
+            //         });
+            //     }
+            // }
+        };
+        init();
+    // }, [socketConnection , params?.roomId , name]); 
+}, []);
+
+
+// useEffect(() => {
+//     console.log('socketConnection outside : ' , socketConnection , 'params?.roomId : ' , params?.roomId , 'name : ' , name);
+    
+// }, [socketConnection]);
+
 
     const handleSearchUser = async () => {
         const URL = `${process.env.REACT_APP_API_URL}/api/search-user`;
@@ -110,18 +203,20 @@ const Room = () => {
         // setTimeout(() => {
             if(socketConnection) {
                 for(let selectedUserId of selectedUserIds) {
+                    console.log('sender : ' , _id , 'receiver : ' , selectedUserId , 'text : ' , params?.roomId , 'msgByUserId : ' , _id);
                     socketConnection.emit('new-message', {
-                        sender : user?._id,
+                        sender : _id,
                         receiver : selectedUserId,
                         text : params?.roomId,
-                        msgByUserId : user?._id
+                        msgByUserId : _id
                     });
                 }
                 setSearch('');
+                toast.success('Invitation sent successfully');
             }
         // } ,  100);
     };
-
+    
     useEffect(() => {
         if(search?.length > 0) {
             handleSearchUser();
@@ -135,12 +230,52 @@ const Room = () => {
         fetchUserDetails();
     } , []);
 
+    const handleClickMe = () => {
+        console.log('socketRef.current : ' , socketRef.current);
+        console.log('socketConnection : ' , socketConnection);
+    }
+
+    // handle code change
+    const handleCodeChange = (value) => {
+        console.log('forntend code change value : ' , value);
+        setCode(value);
+        console.log('socketRef.current : ' , socketRef.current);
+        console.log('code : ' , code);
+        if(setSocketConnection) 
+            socketRef.current = socketConnection;
+        // setTimeout(() => {
+            if(socketRef.current) {
+                socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+                    roomId: params?.roomId,
+                    code: value
+                });
+                console.log('socketConnection : ' , socketConnection);
+            }
+        // }, 1000);
+    };
+
+    // handle language change
+    const handleLanguageChange = (e) => {
+        let newLanguage = e.target.value;
+        setLanguage(newLanguage);
+
+        if(socketConnection)
+            socketRef.current = socketConnection;
+
+        if(socketRef.current) {
+            socketRef.current.emit('language-change', {
+                roomId: params?.roomId,
+                language: newLanguage
+            });
+        }
+    };
+
     return (
         <div className='flex h-screen'>
             <div className='h-screen'>
                 <SideBar name={'Room'} />
             </div>
-            <div className='flex flex-col bg-white p-2 relative w-[90%] lg:w-[25%]'> {/* Added relative position here */}
+            <div className='flex flex-col bg-gray-50 p-2 relative w-[90%] lg:w-[25%] rounded shadow-xl'> {/* Added relative position here */}
                 <div className='flex flex-col'>
                     <div className='border-b border-gray-300'>
                         <img 
@@ -230,11 +365,13 @@ const Room = () => {
                         {client?.map((client) => (
                             <div key={client.socketId} className='flex items-center my-3'>
                                 <Avatar 
-                                    width={50}
-                                    height={50}
-                                    name={client?.username} 
+                                    width={45}
+                                    height={45}
+                                    name={client?.userId?.name}
+                                    imageUrl={client?.userId?.profile_pic}
+                                    userId={client?.userId?._id}
                                 />
-                                <h3 className='text-ellipsis line-clamp-1 font-semibold text-base ml-3'>{client?.username}</h3>
+                                <h3 className='text-ellipsis line-clamp-1 font-semibold text-base ml-3'>{client?.userId?.name}</h3>
                             </div>
                         ))}
                     </div>
@@ -244,9 +381,31 @@ const Room = () => {
                     <button className='border-red-400 border px-4 py-1 rounded bg-red-400  hover:border-red-500 hover:bg-red-500 text-white hover:font-bold'>Leave Room</button>
                 </div>
             </div>
-
             <div className='w-full h-full'>
-                <Editor />
+                <div className='h-[5%] bg-gray-200 flex justify-between items-center p-2'>
+                    <h3 className='text-xl font-semibold text-gray-700  p-2 '>
+                        Code Editor
+                    </h3>
+                    <select className='w-[25%] p-1.5 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        value={language}
+                        onChange={handleLanguageChange}
+                    >
+                        <option value='javascript'>JavaScript</option>
+                        <option value='python'>Python</option>
+                        <option value='java'>Java</option>
+                        <option value='c'>C</option>
+                        <option value='c++'>C++</option>
+                        <option value='html'>HTML</option>
+                        <option value='css'>CSS</option>
+                    </select>
+                </div>
+                <EditorComponent 
+                    language={language}
+                    roomId={params?.roomId}
+                    socketRef={socketRef}
+                    code={code}
+                    onChange={handleCodeChange}
+                />
             </div>
         </div>
     )

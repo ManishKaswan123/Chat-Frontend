@@ -60,7 +60,9 @@ const CodeShare = ({onClose , user}) => {
 
         navigate(`/room/${preRoomID}`, {
             state: {
-                name
+                name : name,
+                profile_pic : user?.profile_pic ,
+                _id : user?._id
             },
         }); 
     };
