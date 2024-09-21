@@ -241,7 +241,7 @@ const Room = () => {
                     <div className='rounded h-12 overflow-hidden flex border mt-2 shadow-md'>
                         <input 
                             type='text' 
-                            placeholder='Add a client' 
+                            placeholder='Add Users' 
                             className='w-full outline-none h-full px-4 py-1' 
                             onChange={(e) => setSearch(e.target.value)}
                             value={search}
@@ -269,7 +269,7 @@ const Room = () => {
                     </div>
                     {/* Display searched user */}
                     {search.length > 0 && (
-                        <div className='bg-white mt-[60%] lg:mt-[50%] md:mt-[50%] p-2 w-[94%] rounded absolute z-10 border shadow-md'> {/* Added absolute position and z-index */}
+                        <div className='bg-white mt-[60%] lg:mt-[50%] md:mt-[50%] p-2 w-[94%] rounded absolute z-10 border shadow-md'>
                             {/* No user found */}
                             {search.length > 0 && searchUser.length === 0 && !loading && (
                                 <p className='text-gray-400 text-center p-1'>No user found!</p>
@@ -283,34 +283,29 @@ const Room = () => {
                             )}
 
                             {/* User found */}
-                            {/* {searchUser?.length > 0 && !loading && (
-                                <div>
-                                    {searchUser?.map((user) => (
-                                        <ClientSearchCard key={user?._id} user={user} onClose={onClose}/>
-                                    ))}
-                                    <button className='border px-4 py-1 w-full rounded   bg-secondary text-white font-bold mt-1 hover:bg-third'>Invite</button>
-                                </div>
-
-                            )} */}
                             {searchUser?.length > 0 && !loading && (
-                                <div>
-                                {searchUser?.map((user) => (
-                                    <ClientSearchCard
-                                    key={user?._id}
-                                    user={user}
-                                    onClose={onClose}
-                                    isSelected={selectedUserIds.includes(user?._id)}
-                                    toggleSelect={toggleSelect}
-                                    />
-                                ))}
-                                <button onClick={handleInviteUsers} className='border px-4 py-1 w-full rounded bg-secondary text-white font-bold mt-1 hover:bg-third'>
-                                    Invite
-                                </button>
-                                </div>
+                                <>
+                                    <div className='max-h-[300px] overflow-y-auto'>
+                                        {searchUser?.map((user) => (
+                                            <ClientSearchCard
+                                                key={user?._id}
+                                                user={user}
+                                                onClose={onClose}
+                                                isSelected={selectedUserIds.includes(user?._id)}
+                                                toggleSelect={toggleSelect}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={handleInviteUsers}
+                                        className='border px-4 py-1 w-full rounded bg-secondary text-white font-bold mt-1 hover:bg-third'>
+                                        Invite
+                                    </button>
+                                </>
                             )}
-
                         </div>
                     )}
+
                     <h3 className='font-semibold text-lg mt-3'>
                         Connected
                     </h3>

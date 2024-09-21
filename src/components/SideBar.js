@@ -8,9 +8,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import EditUserDetails from './EditUserDetails';
 import { FiArrowUpLeft } from "react-icons/fi";
 import SearchUser from './SearchUser';
-import { logout } from '../redux/userSlice';
+import { logout, setUser } from '../redux/userSlice';
 import { FcCollaboration } from "react-icons/fc";
 import CodeShare from './CodeShare';
+import axios from 'axios';
 
 const SideBar = ({name}) => {
     const user = useSelector(state => state?.user);
@@ -25,6 +26,34 @@ const SideBar = ({name}) => {
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const fetchUserDetails = async() => {
+        try {
+            const token = localStorage.getItem('token');
+            const URL = `${process.env.REACT_APP_API_URL}/api/user-details`;
+            const response = await axios({
+                method: 'POST',
+                url: URL,
+                data : {
+                  token: token,
+                }
+            });
+            
+            dispatch(setUser(response?.data?.data));
+    
+            if(response?.data?.data?.logout) {
+              dispatch(logout());
+              navigate('/email');
+            }
+    
+        } catch (error) {
+            console.log(error);
+        }
+    }
+    
+    useEffect(() => {
+    fetchUserDetails();
+    } , []);
 
     useEffect(() => {
         if(user?.name === 'TokenExpiredError') {
@@ -70,7 +99,6 @@ const SideBar = ({name}) => {
     },[socketConnection , user , dispatch , location?.pathname]);
 
     
-
     return (
         <div className='w-full h-full grid grid-cols-[56px,1fr] bg-white'>
             <div className='bg-gray-200 w-14 h-full py-4 text-gray-600 flex flex-col justify-between'>

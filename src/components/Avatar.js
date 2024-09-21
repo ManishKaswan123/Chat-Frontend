@@ -63,7 +63,7 @@ const Avatar = ({ userId, name, imageUrl, width, height }) => {
       )}
       {isOnline && (
         <div 
-          className= ' bg-green-600 p-1 absolute bottom-2 -right-1 z-10 rounded-full'
+          className= ' bg-green-600 p-1 absolute bottom-2 -right-1 rounded-full'
         >
         </div>
       )}
