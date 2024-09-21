@@ -8,6 +8,7 @@ import logo2 from '../assets/logo2.png';
 import io from 'socket.io-client';
 import initSocket from '../components/Socket';
 import handleError from '../components/Error';
+import { stringify } from 'uuid';
 
 const Home = () => {
   const user = useSelector((state) => state.user);
@@ -18,10 +19,14 @@ const Home = () => {
 
   const fetchUserDetails = async() => {
     try {
+        const token = localStorage.getItem('token');
         const URL = `${process.env.REACT_APP_API_URL}/api/user-details`;
         const response = await axios({
+            method: 'POST',
             url: URL,
-            withCredentials: true,
+            data : {
+              token: token,
+            }
         });
 
         dispatch(setUser(response?.data?.data));
